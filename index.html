@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pokémon Chess</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/css/chessboard-1.0.0.min.css" />
+  <style>
+    body { font-family: system-ui, -apple-system, Arial, sans-serif; text-align: center; background: #f7f7f7; margin: 0; }
+    #board { width: min(92vw, 520px); margin: 16px auto; touch-action: none; }
+    h1 { color: #e11d48; font-size: 1.4rem; margin: 12px 0; }
+    .meta { font-size: 0.9rem; color: #333; padding: 0 12px 16px; }
+    .bar { display: flex; gap: 8px; justify-content: center; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+    button { padding: 8px 12px; border-radius: 10px; border: 1px solid #ddd; background: white; }
+    button:active { transform: scale(0.98); }
+    .small { font-size: 0.8rem; color: #666; }
+  </style>
+</head>
+<body>
+  <h1>Pokémon Chess</h1>
+  <div class="bar">
+    <button id="btnReset">Reset</button>
+    <button id="btnFlip">Flip Board</button>
+    <span class="small">Drag pieces to move • Works on mobile</span>
+  </div>
+  <div id="board"></div>
+  <div class="meta">
+    <div id="status"></div>
+    <div id="fen"></div>
+    <div id="pgn"></div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/js/chessboard-1.0.0.min.js"></script>
+  <script>
+    var board = null
+    var game = new Chess()
+
+    var spriteById = function (id) {
+      return 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/' + id + '.png'
+    }
+    var pieceTheme = function (piece) {
+      var map = {
+        'wK': 25, 'wQ': 150, 'wR': 95, 'wB': 65, 'wN': 78, 'wP': 7,
+        'bK': 133, 'bQ': 6,   'bR': 208,'bB': 282,'bN': 445,'bP': 1
+      }
+      return spriteById(map[piece])
+    }
+
+    function onDragStart (source, piece) {
+      if (game.game_over()) return false
+      if ((game.turn() === 'w' && piece[0] === 'b') || (game.turn() === 'b' && piece[0] === 'w')) return false
+    }
+
+    function onDrop (source, target) {
+      var move = game.move({ from: source, to: target, promotion: 'q' })
+      if (move === null) return 'snapback'
+      window.setTimeout(makeBestAIMove, 0)  // remove this line if you want 2-player only
+      updateStatus()
+    }
+
+    function onSnapEnd () { board.position(game.fen()) }
+
+    function updateStatus () {
+      var moveColor = game.turn() === 'w' ? 'White (Trainer Red)' : 'Black (Trainer Blue)'
+      var status = ''
+      if (game.in_checkmate()) status = 'Game over, ' + moveColor + ' is in checkmate.'
+      else if (game.in_draw()) status = 'Game over, drawn position.'
+      else {
+        status = moveColor + ' to move'
+        if (game.in_check()) status += ' — in check!'
+      }
+      document.getElementById('status').textContent = status
+      document.getElementById('fen').textContent = 'FEN: ' + game.fen()
+      document.getElementById('pgn').textContent = 'PGN: ' + game.pgn()
+    }
+
+    function makeBestAIMove () {
+      if (game.game_over() || game.turn() === 'w') return
+      var moves = game.moves()
+      if (moves.length === 0) return
+      var move = moves[Math.floor(Math.random() * moves.length)]
+      game.move(move)
+      board.position(game.fen())
+      updateStatus()
+    }
+
+    var config = {
+      draggable: true,
+      position: 'start',
+      onDragStart: onDragStart,
+      onDrop: onDrop,
+      onSnapEnd: onSnapEnd,
+      pieceTheme: pieceTheme
+    }
+    board = Chessboard('board', config)
+
+    document.getElementById('btnReset').onclick = function(){ game.reset(); board.start(); updateStatus() }
+    document.getElementById('btnFlip').onclick = function(){ board.flip() }
+
+    updateStatus()
+  </script>
+</body>
+</html>
